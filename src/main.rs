@@ -34,7 +34,7 @@ fn main() -> Result<(), String> {
 
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string())?;
-    let mut buttons_buffer = HashSet::new();
+    let buttons_buffer = HashSet::new();
 
 
     //let mut node_list = Vec::<Node>::new();

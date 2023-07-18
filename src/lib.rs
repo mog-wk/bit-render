@@ -11,6 +11,15 @@ pub const HEIGHT: u32 = 600;
 pub const PI: f64 = 3.1415926535897;
 //pub const PI: f64 = 3.14159265358979323846264338327950288419716939937510;
 pub const HPI: f64 = PI / 2.0;
+pub const DPI: f64 = PI * 2.0;
+
+
+pub enum ColorNames {
+    Black = 0x141414,
+    AbsoluteBlack = 0x000000,
+    Crinson = 0x500000,
+    Red = 0xc80000,
+}
 
 pub struct Theme {
     pub background: Color,
@@ -48,8 +57,8 @@ impl Renderer {
         self.canvas.set_draw_color(self.theme.background);
         self.canvas.clear();
 
-        let node_list = vec![Node{x: 200, y: 200}];
         // nodes
+        let node_list = vec![Node{x: 200, y: 200}, Node{x: WIDTH - 200, y: 200}];
         self.canvas.set_draw_color(self.theme.node);
         for node in node_list.iter() {
             self.draw_circle(node.x as i32, node.y as i32, 72);
@@ -58,46 +67,76 @@ impl Renderer {
         self.canvas.present();
 
     }
-    /*
-    pub fn draw_circle_line(&mut self, center_x: i32, center_y: i32, radius: i32) {
-
-
-        const precision: u16 = 27;
-        let mut theta: f64 = 0;
-
-        let mut x = radius * cos(theta);
-        let mut y = radius * sin(theta);
-
-        let mut x1 = x;
-        let mut y1 = y;
-
-        let step = HPI / precision;
-
-        while theta <= HPI {
-            x1 = (radius * cosf(theta)) as f64 + 0.5;
-            y1 = (radius * sinf(theta)) as f64+ 0.5;
-
-            if x != x1 && y != y1 {
-                self.canvas.draw_line(Point::new(center_x + x, center_y + y), Point::new(center_x + x1, center_y + y1));
-                self.canvas.draw_line(Point::new(center_x - x, center_y - y), Point::new(center_x - x1, center_y - y1));
-                self.canvas.draw_line(Point::new(center_x + x, center_y - y), Point::new(center_x + x1, center_y - y1));
-                self.canvas.draw_line(Point::new(center_x - x, center_y + y), Point::new(center_x - x1, center_y + y1));
-            }
-            x = x1;
-            y = y1;
-            theta += step;
-        }
-        if x!= 0 {
-            x = 0;
-            self.canvas.draw_line(Point::new(center_x + x, center_y + y), Point::new(center_x + x1, center_y + y1));
-            self.canvas.draw_line(Point::new(center_x - x, center_y - y), Point::new(center_x - x1, center_y - y1));
-            self.canvas.draw_line(Point::new(center_x + x, center_y - y), Point::new(center_x + x1, center_y - y1));
-            self.canvas.draw_line(Point::new(center_x - x, center_y + y), Point::new(center_x - x1, center_y + y1));
-        }
-    }
-    */
 
     pub fn draw_circle(&mut self, center_x: i32, center_y: i32, radius: i32) {
+
+        //self.draw_circunference(center_x, center_y, radius);
+        let radius = radius as f32;
+
+        let mut theta: f32 = 0.0;
+
+        const RESOLUTION: f32 = 0.0002;
+
+        let center = Point::new(center_x, center_y);
+        while theta < HPI as f32 {
+            let x = (radius * theta.cos()) as i32;
+            let y = (radius * theta.sin()) as i32;
+
+            //println!("{:?} {:?}", (center_x, center_y), (x, y));
+            self.canvas.draw_line( center, Point::new(center_x + x, center_y + y) ).unwrap();
+            self.canvas.draw_line( center, Point::new(center_x - x, center_y + y) ).unwrap();
+            self.canvas.draw_line( center, Point::new(center_x + x, center_y - y) ).unwrap();
+            self.canvas.draw_line( center, Point::new(center_x - x, center_y - y) ).unwrap();
+            theta += RESOLUTION;
+        }
+    }
+
+
+    pub fn draw_circunference(&mut self, center_x: i32, center_y: i32, radius: i32) {
+        // begin at upper perpendicular radius
+
+        let diameter = radius * 2;
+
+        let mut x = radius - 1;
+        let mut y = 0;
+
+        let mut tx = 1;
+        let mut ty = 1;
+
+        let mut err = tx - diameter;
+
+        // TODO make into array of len: (radius * 8 * 35 / 49) + 8 - 1 & -8 
+        let mut point_arr: Vec::<Point> = vec![];
+
+        //self.canvas.draw_point(Point::new(center_x, center_y)); // draw point in circle origin
+        while x >= y {
+            // points for each octanct of the circle
+            point_arr.push(Point::new(center_x + x, center_y + y));
+            point_arr.push(Point::new(center_x + x, center_y - y));
+            point_arr.push(Point::new(center_x - x, center_y + y));
+            point_arr.push(Point::new(center_x - x, center_y - y));
+            point_arr.push(Point::new(center_x + y, center_y + x));
+            point_arr.push(Point::new(center_x + y, center_y - x));
+            point_arr.push(Point::new(center_x - y, center_y + x));
+            point_arr.push(Point::new(center_x - y, center_y - x));
+            
+            if err <= 0 {
+                y += 1;
+                err += ty;
+                ty += 2;
+            }
+
+            if err > 0 {
+                x -= 1;
+                tx += 2;
+                err += tx - diameter;
+            }
+        }
+        self.canvas.draw_points(&point_arr[..]).unwrap();
+    }
+
+
+    pub fn draw_full_ellipse(&mut self, center_x: i32, center_y: i32, radius: i32) {
         // begin at upper perpendicular radius
 
         let diameter = radius * 2;
@@ -114,9 +153,8 @@ impl Renderer {
 
         let mut point_arr: Vec::<Point> = vec![];
         //let len: Box<i32> = Box::new(((radius * 8 * 35 * 49) + 8 - 1) & -8);
-        let mut draw_count: u32 = 0;
 
-        self.canvas.draw_point(Point::new(center_x, center_y)); // draw point in circle origin
+        self.canvas.draw_point(Point::new(center_x, center_y)).unwrap(); // draw point in circle origin
         while x >= y {
             for i in 1..=x {
                 // points for each octanct of the circle
@@ -134,7 +172,6 @@ impl Renderer {
                 point_arr.push(Point::new(center_x - y, center_y - i));
             }
 
-            self.canvas.draw_points(&point_arr[..]);
             
             if err <= 0 {
                 y += 1;
@@ -148,18 +185,7 @@ impl Renderer {
                 err += tx - diameter;
             }
         }
-    }
-}
-
-struct Circle {
-    x: u32,
-    y: u32,
-    radius: u32,
-}
-
-impl Circle {
-    fn new(x: u32, y: u32, radius: u32) -> Self {
-        Self {x, y, radius}
+        self.canvas.draw_points(&point_arr[..]).unwrap();
     }
 }
 
@@ -168,6 +194,8 @@ struct Node {
     y: u32,
 }
 
+
+#[allow(dead_code)]
 impl Node {
     pub fn new(x: u32, y: u32) -> Result<Self, String> {
         if x >= WIDTH || y >= HEIGHT {
