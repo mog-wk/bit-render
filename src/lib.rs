@@ -75,12 +75,13 @@ impl Renderer {
                 false => self.theme.node_0,
             };
             self.canvas.set_draw_color(node_color);
-            draw_circle(self, node.loc.x, node.loc.y, 8);
+            draw_circle(&mut self.canvas, node.x(), node.y(), 8);
         }
         self.canvas.present();
     }
 }
 
+#[derive(Debug)]
 pub struct Node {
     pub loc: Point,
     state: bool,
@@ -94,6 +95,12 @@ impl Node {
             return Err(format!("invalid input for node {} {}", x, y));
         }
         Ok(Self { loc: Point::new(x as i32, y as i32), state })
+    }
+    pub fn x(&self) -> i32 {
+        self.loc.x
+    }
+    pub fn y(&self) -> i32 {
+        self.loc.y
     }
 }
 

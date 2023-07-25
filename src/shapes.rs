@@ -1,4 +1,6 @@
 use sdl2::rect::Point;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 use crate::Renderer;
 
@@ -6,9 +8,24 @@ pub const PI: f64 = 3.1415926;
 pub const HPI: f64 = PI / 2.0;
 pub const DPI: f64 = PI * 2.0;
 
+/// draw circle in render with current sdl color
+pub fn draw_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, r: i32) {
+    let d: i32 = r * 2;
+    for i in 0..d {
+        for j in 0..d {
+            let dx = r - i;
+            let dy = r - j;
+            if (dx * dx + dy * dy) <= (r * r) {
+                canvas.draw_point(Point::new(x0 + dx, y0 + dy)).expect("failed to draw point in canvas");
+            }
+        }
+    }
+}
+
 
 #[allow(dead_code)]
-pub fn draw_circle(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
+/// ineficient draw filled circle algorithm DO NOT USE, use draw_circle above
+fn draw_circle_dead(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
 
     let radius = radius as f32;
 
@@ -32,7 +49,9 @@ pub fn draw_circle(render: &mut Renderer, center_x: i32, center_y: i32, radius: 
 
 
 #[allow(dead_code)]
+/// draws an unfilled circle
 pub fn draw_circunference(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
+    // Mid Point circle algorithm
     // begin at upper perpendicular radius
 
     let diameter = radius * 2;
@@ -65,7 +84,6 @@ pub fn draw_circunference(render: &mut Renderer, center_x: i32, center_y: i32, r
             err += ty;
             ty += 2;
         }
-
         if err > 0 {
             x -= 1;
             tx += 2;
@@ -77,6 +95,7 @@ pub fn draw_circunference(render: &mut Renderer, center_x: i32, center_y: i32, r
 
 
 #[allow(dead_code)]
+/// draws a filled ellipse; has pixel overlap; use conservatly
 pub fn draw_full_ellipse(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
     // begin at upper perpendicular radius
 
