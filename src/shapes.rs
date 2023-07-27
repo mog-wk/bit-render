@@ -4,8 +4,11 @@ use sdl2::video::Window;
 
 use crate::Renderer;
 
+#[allow(dead_code)]
 pub const PI: f64 = 3.1415926;
+#[allow(dead_code)]
 pub const HPI: f64 = PI / 2.0;
+#[allow(dead_code)]
 pub const DPI: f64 = PI * 2.0;
 
 /// draw circle in render with current sdl color

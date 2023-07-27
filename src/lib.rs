@@ -84,13 +84,18 @@ impl Renderer {
 #[derive(Debug)]
 pub struct Node {
     pub loc: Point,
-    state: bool,
+    pub state: bool,
 }
 
 
 #[allow(dead_code)]
 impl Node {
-    pub fn new(x: u32, y: u32, state: bool) -> Result<Self, String> {
+    /// new node at middle of canvas and Off
+    pub fn new() -> Self {
+        Self { loc: Point::new( (WIDTH / 2) as i32, (HEIGHT / 2) as i32 ), state: false }
+    }
+    /// new node from data
+    pub fn from(x: u32, y: u32, state: bool) -> Result<Self, String> {
         if x >= WIDTH || y >= HEIGHT {
             return Err(format!("invalid input for node {} {}", x, y));
         }
@@ -102,8 +107,12 @@ impl Node {
     pub fn y(&self) -> i32 {
         self.loc.y
     }
+    pub fn switch_state(&mut self) {
+        self.state = !self.state;
+    }
 }
 
+#[allow(dead_code)]
 struct UI {
 
 }

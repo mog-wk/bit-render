@@ -37,13 +37,14 @@ fn main() {
     let mut node_list: Vec<Node> = Vec::new();
     let radius = 8;
 
-    node_list.push(Node::new(100, 100, false).unwrap());
+    //node_list.push(Node::new(100, 100, false).unwrap());
 
-    let mut input_mode = InputMode::Node;
+    let input_mode = InputMode::Node;
 
     let mut inputted = false;
 
-    let mut frame_count = 0;
+    let mut frame_count: u32 = 0;
+    const INPUT_DELAY: u32 = 40;
 
     'run: loop {
         for event in event_pump.poll_iter() {
@@ -64,45 +65,42 @@ fn main() {
             println!("X = {:?}, Y ={:?}, {:?} : {:?}", mouse_state.x(), mouse_state.y(), old_buttons, new_buttons);
             match input_mode {
                 InputMode::Node => {
-                    if node_list.len() > 0 {
-                        if new_buttons.contains(&MouseButton::Left) {
-                            // find closest node
-                            let mut closest = Box::new(&node_list[0]);
-                            let mut closest_dist = WIDTH;
-                            for node in &node_list[0..] {
-                                let cur_dist = dist(mouse_state.x(), mouse_state.y(), node.x(), node.y());
-                                  println!("===================================");
-                                  println!("node: {:?}", node);
-                                  println!("closest: {:?}", *closest);
-                                  println!("cur_dist: {:?}", cur_dist);
-                                  println!("closest_dist: {:?}", closest_dist);
-                                if cur_dist < closest_dist - radius {
-                                    closest_dist = cur_dist;
-                                    closest = Box::new(node);
-                                }
-                            }
-                            // add node
-                            if closest_dist >= radius as u32 * 2 {
-                                node_list.push(Node::new(mouse_state.x() as u32,
+                    if new_buttons.contains(&MouseButton::Left) {
+                        // add node
+                        if node_list.len() == 0 {
+                            // if there are no nodes just add on spot
+                            node_list.push(Node::from(mouse_state.x() as u32,
+                            mouse_state.y() as u32, true).unwrap() ); 
+                        } else {
+                            // if there are nodes, check to avoid intercection
+                            // find closest node's distance and index
+                            let closest_node_data: (u32, usize) = node_closest_dist_get(&node_list, mouse_state.x(), mouse_state.y()).unwrap();
+                            if closest_node_data.0 >= radius as u32 * 2 {
+                                node_list.push(Node::from(mouse_state.x() as u32,
                                 mouse_state.y() as u32, true).unwrap() ); 
                             } else {
-                                println!("could not add not due to proximity");
-                            }
+                                // if intersects change state of node
+                                let node = &mut node_list[closest_node_data.1];
+                                node.state = !node.state;
 
-                            inputted = true;
-                        } else if new_buttons.contains(&MouseButton::Middle) {
-                            // move node
-                            ();
-                            inputted = true;
-                         }
-                    }
+                                //println!("could not add not due to proximity, switched {:?} state", closest.0);
+                            }
+                        }
+
+                        inputted = true;
+                    } else if new_buttons.contains(&MouseButton::Middle) {
+                        // move node
+                        ();
+                        inputted = true;
+                     }
+                    
                 },
                 _ => panic!("invalid input_mode"),
             }
             println!("{}", node_list.len());
         }
 
-        if frame_count % 30 == 0 {
+        if frame_count % INPUT_DELAY == 0 {
             inputted = false;
         }
 
@@ -113,6 +111,35 @@ fn main() {
 
 }
 
+
+/// get closest node from point, returns a tuple with the node and the distance
+fn node_closest_dist_get(node_list: &Vec<Node>, x: i32, y: i32) -> Result<(u32, usize), String> {
+    if !(node_list.len() > 0) {
+        return Err("invalid len for node_list".to_string())
+    } 
+    let mut closest_dist = WIDTH;
+    let mut closest_index = 0;
+    let mut index = 0;
+    for node in node_list.iter() {
+        let cur_dist = dist(x, y, node.x(), node.y());
+          //println!("===================================");
+          //println!("node: {:?}", node);
+          //println!("closest: {:?}", *closest);
+          //println!("cur_dist: {:?}", cur_dist);
+          //println!("closest_dist: {:?}", closest_dist);
+
+        if cur_dist < closest_dist {
+            closest_dist = cur_dist;
+            closest_index = index;
+        }
+        index += 1;
+    }
+    Ok( (closest_dist, closest_index as usize) )
+}
+
+
+
+/// distance between two points
 fn dist(x: i32, y: i32, x1: i32, y1: i32) -> u32 {
     let d = ( ( (y1 - y).pow(2) + (x1 - x).pow(2) ) as f64).sqrt();
     if d < 0_f64 {
