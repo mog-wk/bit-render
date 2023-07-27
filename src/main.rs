@@ -31,7 +31,7 @@ fn main() {
     let mut canvas = Renderer::new(window, theme).unwrap();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let buttons_buffer = HashSet::new();
+    let mut mouse_buttons_buffer = HashSet::new();
 
     // TODO make into heap for enchanced manipulation
     let mut node_list: Vec<Node> = Vec::new();
@@ -58,8 +58,10 @@ fn main() {
 
         let mouse_state = event_pump.mouse_state();
         let mouse_buttons = mouse_state.pressed_mouse_buttons().collect();
-        let new_buttons = &mouse_buttons - &buttons_buffer;
-        let old_buttons = &buttons_buffer - &mouse_buttons;
+        // mouse pressed
+        let new_buttons = &mouse_buttons - &mouse_buttons_buffer;
+        // mouse released
+        let old_buttons = &mouse_buttons_buffer - &mouse_buttons;
 
         if (!new_buttons.is_empty() || !old_buttons.is_empty()) && !inputted {
             println!("X = {:?}, Y ={:?}, {:?} : {:?}", mouse_state.x(), mouse_state.y(), old_buttons, new_buttons);
@@ -92,12 +94,16 @@ fn main() {
                         // move node
                         ();
                         inputted = true;
-                     }
+                    } else if new_buttons.contains(&MouseButton::Right) {
+                        // removes node
+
+                    }
                     
                 },
                 _ => panic!("invalid input_mode"),
             }
             println!("{}", node_list.len());
+            mouse_buttons_buffer = new_buttons;
         }
 
         if frame_count % INPUT_DELAY == 0 {
