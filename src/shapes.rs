@@ -11,6 +11,19 @@ pub const HPI: f64 = PI / 2.0;
 #[allow(dead_code)]
 pub const DPI: f64 = PI * 2.0;
 
+
+
+#[allow(dead_code)]
+/// draw a rectangle with the top-left corner at x0 and y0 in canvas
+pub fn draw_rect(canvas: &mut Canvas<Window>, x0: i32, y0: i32, width: i32, height: i32) {
+    for i in 0..=width {
+        for j in 0..=height {
+            canvas.draw_point(Point::new(x0 + i, y0 + j)).unwrap();
+        }
+    }
+}
+
+
 /// draw circle in render with current sdl color
 pub fn draw_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, r: i32) {
     let d: i32 = r * 2;
