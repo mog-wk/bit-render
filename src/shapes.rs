@@ -24,7 +24,7 @@ pub fn draw_rect(canvas: &mut Canvas<Window>, x0: i32, y0: i32, width: i32, heig
 }
 
 
-/// draw circle in render with current sdl color
+/// draw circle in canvas with current sdl color
 pub fn draw_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, r: i32) {
     let d: i32 = r * 2;
     for i in 0..d {
@@ -35,31 +35,6 @@ pub fn draw_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, r: i32) {
                 canvas.draw_point(Point::new(x0 + dx, y0 + dy)).expect("failed to draw point in canvas");
             }
         }
-    }
-}
-
-
-#[allow(dead_code)]
-/// ineficient draw filled circle algorithm DO NOT USE, use draw_circle above
-fn draw_circle_dead(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
-
-    let radius = radius as f32;
-
-    let mut theta: f32 = 0.0;
-
-    const RESOLUTION: f32 = 0.0002;
-
-    let center = Point::new(center_x, center_y);
-    while theta < HPI as f32 {
-        let x = (radius * theta.cos()) as i32;
-        let y = (radius * theta.sin()) as i32;
-
-        //println!("{:?} {:?}", (center_x, center_y), (x, y));
-        render.canvas.draw_line( center, Point::new(center_x + x, center_y + y) ).unwrap();
-        render.canvas.draw_line( center, Point::new(center_x - x, center_y + y) ).unwrap();
-        render.canvas.draw_line( center, Point::new(center_x + x, center_y - y) ).unwrap();
-        render.canvas.draw_line( center, Point::new(center_x - x, center_y - y) ).unwrap();
-        theta += RESOLUTION;
     }
 }
 
