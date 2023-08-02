@@ -14,7 +14,8 @@ mod shapes;
 
 
 pub enum InputMode {
-    Node,
+    Emmiter,
+    Receiver,
     Wire,
     Func(fn()),
 }
@@ -60,7 +61,7 @@ impl Renderer {
         Ok(Self { canvas, theme })
     }
 
-    pub fn render(&mut self, node_list: &Vec<Node>) {
+    pub fn render(&mut self, emmiter_list: &Vec<Emmiter>) {
         // background
         self.canvas.set_draw_color(self.theme.background);
         self.canvas.clear();
@@ -69,27 +70,35 @@ impl Renderer {
         // NOTE redering multiple circles breaks the render
 
         self.canvas.set_draw_color(self.theme.node_1);
-        for node in node_list {
-            let node_color = match node.state {
+        for emmiter in emmiter_list {
+            let node_color = match emmiter.state {
                 true => self.theme.node_1,
                 false => self.theme.node_0,
             };
             self.canvas.set_draw_color(node_color);
-            draw_circle(&mut self.canvas, node.x(), node.y(), 16);
+            draw_circle(&mut self.canvas, emmiter.x(), emmiter.y(), 16);
         }
         self.canvas.present();
     }
 }
 
+
+#[allow(dead_code)]
+pub trait Node {
+    fn x(&self) -> i32; 
+    fn y(&self) -> i32;
+    fn set_loc(&mut self, x: i32, y: i32) -> ();
+    fn switch_state(&mut self) -> ();
+}
+
+
 #[derive(Debug)]
-pub struct Node {
+pub struct Emmiter {
     pub loc: Point,
     pub state: bool,
 }
 
-
-#[allow(dead_code)]
-impl Node {
+impl Emmiter {
     /// new node at middle of canvas and Off
     pub fn new() -> Self {
         Self { loc: Point::new( (WIDTH / 2) as i32, (HEIGHT / 2) as i32 ), state: false }
@@ -101,18 +110,33 @@ impl Node {
         }
         Ok(Self { loc: Point::new(x as i32, y as i32), state })
     }
-    pub fn x(&self) -> i32 {
+}
+
+impl Node for Emmiter {
+    fn x(&self) -> i32 {
         self.loc.x
     }
-    pub fn y(&self) -> i32 {
+    fn y(&self) -> i32 {
         self.loc.y
     }
-    pub fn set_loc(&mut self, x: i32, y: i32) {
+    fn set_loc(&mut self, x: i32, y: i32) {
         self.loc = Point::new(x,y);
     }
-    pub fn switch_state(&mut self) {
+
+    fn switch_state(&mut self) {
         self.state = !self.state;
     }
+}
+
+#[derive(Debug)]
+pub struct Wire {
+
+}
+
+
+#[allow(dead_code)]
+impl Wire {
+
 }
 
 #[allow(dead_code)]

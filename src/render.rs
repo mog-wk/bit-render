@@ -29,12 +29,12 @@ pub fn main() {
     let mut mouse_buttons_buffer = HashSet::new();
 
     // TODO make into heap for enchanced manipulation
-    let mut node_list: Vec<Node> = Vec::new();
+    let mut emmiter_list: Vec<Emmiter> = Vec::new();
     let radius = 16;
 
-    //node_list.push(Node::new(100, 100, false).unwrap());
+    //emmiter_list.push(Node::new(100, 100, false).unwrap());
 
-    let mut input_mode = InputMode::Node;
+    let mut input_mode = InputMode::Emmiter;
 
     let mut inputted: bool = false;
     let mut move_mode: bool = true;
@@ -47,13 +47,13 @@ pub fn main() {
             match event {
                 Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'run,
                 // map key to input mode Q => Node; W => Wire; E => ..; R => Funcs
-                Event::KeyDown { keycode: Some(Keycode::Q), .. } => input_mode = InputMode::Node,
+                Event::KeyDown { keycode: Some(Keycode::Q), .. } => input_mode = InputMode::Emmiter,
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => input_mode = InputMode::Wire,
                 _ => {},
             }
         }
 
-        canvas.render(&node_list);
+        canvas.render(&emmiter_list);
 
         let mouse_state = event_pump.mouse_state();
         let mouse_buttons = mouse_state.pressed_mouse_buttons().collect();
@@ -65,23 +65,23 @@ pub fn main() {
         if (!mouse_new_buttons.is_empty() || !mouse_old_buttons.is_empty()) && !inputted {
             println!("X = {:?}, Y ={:?}, {:?} : {:?}", mouse_state.x(), mouse_state.y(), mouse_old_buttons, mouse_new_buttons);
             match input_mode {
-                InputMode::Node => 'input_action: {
+                InputMode::Emmiter => 'input_action: {
                     if mouse_new_buttons.contains(&MouseButton::Left) {
-                        // add node
-                        if node_list.len() == 0 {
+                        // add emmiter
+                        if emmiter_list.len() == 0 {
                             // if there are no nodes just add on spot
-                            node_list.push(Node::from(mouse_state.x() as u32,
+                            emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
                             mouse_state.y() as u32, true).unwrap() ); 
                         } else {
                             // if there are nodes, check to avoid intercection
                             // find closest node's distance and index
-                            let closest_node_data: (u32, usize) = node_closest_dist_get(&node_list, mouse_state.x(), mouse_state.y()).unwrap();
+                            let closest_node_data: (u32, usize) = node_closest_dist_get(&emmiter_list, mouse_state.x(), mouse_state.y()).unwrap();
                             if closest_node_data.0 >= radius as u32 * 2 {
-                                node_list.push(Node::from(mouse_state.x() as u32,
+                                emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
                                 mouse_state.y() as u32, true).unwrap() ); 
                             } else {
                                 // if intersects change state of node
-                                let node = &mut node_list[closest_node_data.1];
+                                let node = &mut emmiter_list[closest_node_data.1];
                                 node.state = !node.state;
                             }
                         }
@@ -94,17 +94,17 @@ pub fn main() {
                         // TODO make check for intersection with mouse pointer and
                         // closest node but make move range not dependent on closest
                         // node's radius
-                        if node_list.len() == 0 {
+                        if emmiter_list.len() == 0 {
                             break 'input_action;
                         }
                         // find node
-                        let closest_node_data: (u32, usize) = node_closest_dist_get(&node_list, mouse_state.x(), mouse_state.y()).unwrap();
+                        let closest_node_data: (u32, usize) = node_closest_dist_get(&emmiter_list, mouse_state.x(), mouse_state.y()).unwrap();
                         
                         // mouse intersects node
                         if closest_node_data.0 <= radius as u32 * 2 {
                             // move
                             let move_node_index = closest_node_data.1;
-                            node_list[move_node_index].set_loc(mouse_state.x(), mouse_state.y()); 
+                            emmiter_list[move_node_index].set_loc(mouse_state.x(), mouse_state.y()); 
                             move_mode = true;
                         }
                     } else if mouse_old_buttons.contains(&MouseButton::Middle) {
@@ -125,7 +125,7 @@ pub fn main() {
             } 
 
             
-            println!("{}", node_list.len());
+            println!("{}", emmiter_list.len());
 
         }
 
@@ -144,7 +144,9 @@ pub fn main() {
 
 
 /// get closest node from point, returns a tuple with the node and the distance
-fn node_closest_dist_get(node_list: &Vec<Node>, x: i32, y: i32) -> Result<(u32, usize), String> {
+fn node_closest_dist_get<T>(node_list: &Vec<T>, x: i32, y: i32)
+    -> Result<(u32, usize), String> 
+where T: Node {
     if !(node_list.len() > 0) {
         return Err("invalid len for node_list".to_string())
     } 
