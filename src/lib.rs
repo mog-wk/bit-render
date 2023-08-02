@@ -75,7 +75,7 @@ impl Renderer {
                 false => self.theme.node_0,
             };
             self.canvas.set_draw_color(node_color);
-            draw_circle(&mut self.canvas, node.x(), node.y(), 8);
+            draw_circle(&mut self.canvas, node.x(), node.y(), 16);
         }
         self.canvas.present();
     }
@@ -106,6 +106,9 @@ impl Node {
     }
     pub fn y(&self) -> i32 {
         self.loc.y
+    }
+    pub fn set_loc(&mut self, x: i32, y: i32) {
+        self.loc = Point::new(x,y);
     }
     pub fn switch_state(&mut self) {
         self.state = !self.state;

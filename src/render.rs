@@ -30,13 +30,14 @@ pub fn main() {
 
     // TODO make into heap for enchanced manipulation
     let mut node_list: Vec<Node> = Vec::new();
-    let radius = 8;
+    let radius = 16;
 
     //node_list.push(Node::new(100, 100, false).unwrap());
 
     let mut input_mode = InputMode::Node;
 
-    let mut inputted = false;
+    let mut inputted: bool = false;
+    let mut move_mode: bool = true;
 
     let mut frame_count: u32 = 0;
     const INPUT_DELAY: u32 = 40;
@@ -57,15 +58,15 @@ pub fn main() {
         let mouse_state = event_pump.mouse_state();
         let mouse_buttons = mouse_state.pressed_mouse_buttons().collect();
         // mouse pressed
-        let new_buttons = &mouse_buttons - &mouse_buttons_buffer;
+        let mouse_new_buttons = &mouse_buttons - &mouse_buttons_buffer;
         // mouse released
-        let old_buttons = &mouse_buttons_buffer - &mouse_buttons;
+        let mouse_old_buttons = &mouse_buttons_buffer - &mouse_buttons;
 
-        if (!new_buttons.is_empty() || !old_buttons.is_empty()) && !inputted {
-            println!("X = {:?}, Y ={:?}, {:?} : {:?}", mouse_state.x(), mouse_state.y(), old_buttons, new_buttons);
+        if (!mouse_new_buttons.is_empty() || !mouse_old_buttons.is_empty()) && !inputted {
+            println!("X = {:?}, Y ={:?}, {:?} : {:?}", mouse_state.x(), mouse_state.y(), mouse_old_buttons, mouse_new_buttons);
             match input_mode {
-                InputMode::Node => {
-                    if new_buttons.contains(&MouseButton::Left) {
+                InputMode::Node => 'input_action: {
+                    if mouse_new_buttons.contains(&MouseButton::Left) {
                         // add node
                         if node_list.len() == 0 {
                             // if there are no nodes just add on spot
@@ -82,17 +83,35 @@ pub fn main() {
                                 // if intersects change state of node
                                 let node = &mut node_list[closest_node_data.1];
                                 node.state = !node.state;
-
-                                //println!("could not add not due to proximity, switched {:?} state", closest.0);
                             }
                         }
+                        inputted = true;
 
-                        inputted = true;
-                    } else if new_buttons.contains(&MouseButton::Middle) {
-                        // move node
-                        ();
-                        inputted = true;
-                    } else if new_buttons.contains(&MouseButton::Right) {
+                    } else if mouse_new_buttons.contains(&MouseButton::Middle) {
+                        // move node while middle mouse button is pressed
+                        // if there are no nodes do nothing
+                        // TODO make move smoothier
+                        // TODO make check for intersection with mouse pointer and
+                        // closest node but make move range not dependent on closest
+                        // node's radius
+                        if node_list.len() == 0 {
+                            break 'input_action;
+                        }
+                        // find node
+                        let closest_node_data: (u32, usize) = node_closest_dist_get(&node_list, mouse_state.x(), mouse_state.y()).unwrap();
+                        
+                        // mouse intersects node
+                        if closest_node_data.0 <= radius as u32 * 2 {
+                            // move
+                            let move_node_index = closest_node_data.1;
+                            node_list[move_node_index].set_loc(mouse_state.x(), mouse_state.y()); 
+                            move_mode = true;
+                        }
+                    } else if mouse_old_buttons.contains(&MouseButton::Middle) {
+                            move_mode = false;
+                            inputted = true;
+
+                    } else if mouse_new_buttons.contains(&MouseButton::Right) {
                         // removes node
 
                     }
@@ -100,12 +119,19 @@ pub fn main() {
                 },
                 _ => panic!("invalid input_mode"),
             }
+
+            if !move_mode {
+                mouse_buttons_buffer = mouse_new_buttons;
+            } 
+
+            
             println!("{}", node_list.len());
-            mouse_buttons_buffer = new_buttons;
+
         }
 
         if frame_count % INPUT_DELAY == 0 {
             inputted = false;
+        } else {
         }
 
         frame_count += 1;
