@@ -2,8 +2,6 @@ use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 
-use crate::Renderer;
-
 #[allow(dead_code)]
 pub const PI: f64 = 3.1415926;
 #[allow(dead_code)]
@@ -41,7 +39,7 @@ pub fn draw_circle(canvas: &mut Canvas<Window>, x0: i32, y0: i32, r: i32) {
 
 #[allow(dead_code)]
 /// draws an unfilled circle
-pub fn draw_circunference(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
+pub fn draw_circunference(canvas: &mut Canvas<Window>, center_x: i32, center_y: i32, radius: i32) {
     // Mid Point circle algorithm
     // begin at upper perpendicular radius
 
@@ -81,13 +79,13 @@ pub fn draw_circunference(render: &mut Renderer, center_x: i32, center_y: i32, r
             err += tx - diameter;
         }
     }
-    render.canvas.draw_points(&point_arr[..]).unwrap();
+    canvas.draw_points(&point_arr[..]).unwrap();
 }
 
 
 #[allow(dead_code)]
 /// draws a filled ellipse; has pixel overlap; use conservatly
-pub fn draw_full_ellipse(render: &mut Renderer, center_x: i32, center_y: i32, radius: i32) {
+pub fn draw_full_ellipse(canvas: &mut Canvas<Window>, center_x: i32, center_y: i32, radius: i32) {
     // begin at upper perpendicular radius
 
     let diameter = radius * 2;
@@ -105,7 +103,7 @@ pub fn draw_full_ellipse(render: &mut Renderer, center_x: i32, center_y: i32, ra
     let mut point_arr: Vec::<Point> = vec![];
     //let len: Box<i32> = Box::new(((radius * 8 * 35 * 49) + 8 - 1) & -8);
 
-    render.canvas.draw_point(Point::new(center_x, center_y)).unwrap(); // draw point in circle origin
+    canvas.draw_point(Point::new(center_x, center_y)).unwrap(); // draw point in circle origin
     while x >= y {
         for i in 1..=x {
             // points for each octanct of the circle
@@ -136,6 +134,6 @@ pub fn draw_full_ellipse(render: &mut Renderer, center_x: i32, center_y: i32, ra
             err += tx - diameter;
         }
     }
-    render.canvas.draw_points(&point_arr[..]).unwrap();
+    canvas.draw_points(&point_arr[..]).unwrap();
 }
 

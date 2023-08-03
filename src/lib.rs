@@ -1,17 +1,13 @@
 extern crate sdl2;
 
+use sdl2::rect::Point;
+use sdl2::video::Window;
 use sdl2::pixels::Color;
 use sdl2::render::WindowCanvas;
-use sdl2::video::Window;
-use sdl2::rect::Point;
+use std::collections::HashSet;
 
 pub const WIDTH: u32 = 800;
 pub const HEIGHT: u32 = 600;
-
-
-use shapes::*;
-mod shapes;
-
 
 pub enum InputMode {
     Emmiter,
@@ -50,39 +46,6 @@ impl Theme {
 }
 
 
-pub struct Renderer {
-    canvas: WindowCanvas,
-    theme: Theme,
-}
-
-impl Renderer {
-    pub fn new(window: Window, theme: Theme) -> Result<Self, String> {
-        let canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
-        Ok(Self { canvas, theme })
-    }
-
-    pub fn render(&mut self, emmiter_list: &Vec<Emmiter>) {
-        // background
-        self.canvas.set_draw_color(self.theme.background);
-        self.canvas.clear();
-
-        // nodes
-        // NOTE redering multiple circles breaks the render
-
-        self.canvas.set_draw_color(self.theme.node_1);
-        for emmiter in emmiter_list {
-            let node_color = match emmiter.state {
-                true => self.theme.node_1,
-                false => self.theme.node_0,
-            };
-            self.canvas.set_draw_color(node_color);
-            draw_circle(&mut self.canvas, emmiter.x(), emmiter.y(), 16);
-        }
-        self.canvas.present();
-    }
-}
-
-
 #[allow(dead_code)]
 pub trait Node {
     fn x(&self) -> i32; 
@@ -94,21 +57,26 @@ pub trait Node {
 
 #[derive(Debug)]
 pub struct Emmiter {
-    pub loc: Point,
+    loc: Point,
     pub state: bool,
+
+    pub connections: HashSet<Wire>,
 }
 
 impl Emmiter {
     /// new node at middle of canvas and Off
     pub fn new() -> Self {
-        Self { loc: Point::new( (WIDTH / 2) as i32, (HEIGHT / 2) as i32 ), state: false }
+        Self { loc: Point::new( (WIDTH / 2) as i32, (HEIGHT / 2) as i32 ),
+        state: false,
+        connections: HashSet::new(), }
     }
     /// new node from data
-    pub fn from(x: u32, y: u32, state: bool) -> Result<Self, String> {
+    pub fn from(x: u32, y: u32, state: bool, connections: HashSet<Wire>)
+        -> Result<Self, String> {
         if x >= WIDTH || y >= HEIGHT {
             return Err(format!("invalid input for node {} {}", x, y));
         }
-        Ok(Self { loc: Point::new(x as i32, y as i32), state })
+        Ok(Self { loc: Point::new(x as i32, y as i32), state, connections })
     }
 }
 
@@ -127,6 +95,13 @@ impl Node for Emmiter {
         self.state = !self.state;
     }
 }
+
+pub fn emmit_signal(emmiter: &Emmiter) {
+    for wire in emmiter.connections.iter() {
+
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Wire {
