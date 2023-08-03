@@ -51,6 +51,7 @@ pub trait Node {
     fn x(&self) -> i32; 
     fn y(&self) -> i32;
     fn set_loc(&mut self, x: i32, y: i32) -> ();
+    fn get_loc(&self) -> (i32, i32);
     fn switch_state(&mut self) -> ();
 }
 
@@ -59,7 +60,6 @@ pub trait Node {
 pub struct Emmiter {
     loc: Point,
     pub state: bool,
-
     pub connections: HashSet<Wire>,
 }
 
@@ -90,10 +90,17 @@ impl Node for Emmiter {
     fn set_loc(&mut self, x: i32, y: i32) {
         self.loc = Point::new(x,y);
     }
-
+    fn get_loc(&self) -> (i32, i32) {
+        (self.loc.x, self.loc.y)
+    }
     fn switch_state(&mut self) {
         self.state = !self.state;
     }
+}
+
+pub fn add_wire(emmiter: &mut Emmiter, wire: Wire) {
+    //-> Result<(), String> {
+    emmiter.connections.insert(wire);
 }
 
 pub fn emmit_signal(emmiter: &Emmiter) {
@@ -102,8 +109,12 @@ pub fn emmit_signal(emmiter: &Emmiter) {
     }
 }
 
+struct Receiver {
+    loc: Point,
+    state: bool,
+}
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Wire {
 
 }

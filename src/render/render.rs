@@ -1,8 +1,8 @@
 extern crate sdl2;
 
 use sdl2::pixels::Color;
-use sdl2::render::WindowCanvas;
 use sdl2::event::Event;
+use sdl2::render::WindowCanvas;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 
@@ -19,9 +19,9 @@ const DEBUG: bool = true;
 
 /// get closest node from point, returns a tuple with the node and the distance
 fn node_closest_dist_get<T>(node_list: &Vec<T>, x: i32, y: i32)
-    -> Result<(u32, usize), String> where T: Node {
+    -> Option<(u32, usize)> where T: Node {
     if !(node_list.len() > 0) {
-        return Err("invalid len for node_list".to_string())
+        return None
     } 
     let mut closest_dist = WIDTH;
     let mut closest_index = 0;
@@ -40,7 +40,7 @@ fn node_closest_dist_get<T>(node_list: &Vec<T>, x: i32, y: i32)
         }
         index += 1;
     }
-    Ok( (closest_dist, closest_index as usize) )
+    Some( (closest_dist, closest_index as usize) )
 }
 
 /// distance between two points
@@ -73,6 +73,9 @@ pub fn main() {
 
     // TODO make into heap for enchanced manipulation
     let mut emmiter_list: Vec<Emmiter> = Vec::new();
+    let mut emmiter_list_buffer: Vec<(i32, i32)> = Vec::new();
+    let mut wire_list: Vec<Wire> = Vec::new();
+
     let radius = 16;
 
     //emmiter_list.push(Node::new(100, 100, false).unwrap());
@@ -84,6 +87,10 @@ pub fn main() {
 
     let mut frame_count: u32 = 0;
     const INPUT_DELAY: u32 = 40;
+
+    canvas.set_draw_color(theme.background);
+    canvas.clear();
+
 
     'run: loop {
         // --------------------------------------------------------------------
@@ -99,6 +106,7 @@ pub fn main() {
                     input_mode = InputMode::Wire,
                 Event::KeyDown { keycode: Some(Keycode::E), .. } =>
                     input_mode = InputMode::Receiver,
+                //_ => println!("{:?}", event),
                 _ => (),
             }
         }
@@ -110,7 +118,7 @@ pub fn main() {
         let mouse_old_buttons = &mouse_buttons_buffer - &mouse_buttons;
 
         // --------------------------------------------------------------------
-        // State Update
+        // Update
         // --------------------------------------------------------------------
         if (!mouse_new_buttons.is_empty() || !mouse_old_buttons.is_empty()) && !inputted {
             println!("X = {:?}, Y ={:?}, {:?} : {:?}",
@@ -122,20 +130,24 @@ pub fn main() {
                         // add emmiter
                         if emmiter_list.len() == 0 {
                             // if there are no nodes just add on spot
-                            emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
-                            mouse_state.y() as u32, true, HashSet::new()).unwrap() ); 
+                            emmiter_list.push( Emmiter::from(
+                                    mouse_state.x() as u32,
+                                    mouse_state.y() as u32,
+                                    true, HashSet::new()).unwrap()
+                                ); 
                         } else {
                             // if there are nodes, check to avoid intercection
                             // find closest node's distance and index
                             let closest_node_data: (u32, usize) = node_closest_dist_get(
-                                &emmiter_list, mouse_state.x(), mouse_state.y()) .unwrap()
-                            if closest_node_data.0 >= radius as u32 * 2 {
-                                emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
-                                mouse_state.y() as u32, true, HashSet::new()).unwrap() ); 
-                            } else {
+                                &emmiter_list, mouse_state.x(), mouse_state.y()
+                                ) .unwrap();
+                            if closest_node_data.0 < radius as u32 {
                                 // if intersects change state of node
                                 let node = &mut emmiter_list[closest_node_data.1];
                                 node.state = !node.state;
+                            } else {
+                                emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
+                                mouse_state.y() as u32, true, HashSet::new()).unwrap() ); 
                             }
                         }
                         inputted = true;
@@ -155,11 +167,13 @@ pub fn main() {
                             &emmiter_list, mouse_state.x(), mouse_state.y()).unwrap();
                         
                         // mouse intersects node
-                        if closest_node_data.0 <= radius as u32 * 2 {
+                        if closest_node_data.0 <= radius as u32 {
                             // move
-                            let move_node_index = closest_node_data.1;
-                            emmiter_list[move_node_index].set_loc(
-                                mouse_state.x(), mouse_state.y()); 
+                            // add move_node to buffer
+                            emmiter_list_buffer.push(emmiter_list[closest_node_data.1].get_loc());
+                            emmiter_list[closest_node_data.1].set_loc(
+                                mouse_state.x(), mouse_state.y()
+                                ); 
                             move_mode = true;
                         }
                     } else if mouse_old_buttons.contains(&MouseButton::Middle) {
@@ -168,9 +182,29 @@ pub fn main() {
 
                     } else if mouse_new_buttons.contains(&MouseButton::Right) {
                         // removes node
-
+                        let closest_node_data = match node_closest_dist_get(
+                            &emmiter_list, mouse_state.x(), mouse_state.y()
+                            ) {
+                            Some(v) => v,
+                            None => break 'input_action,
+                        };
+                        if closest_node_data.0 < radius as u32 {
+                            emmiter_list_buffer.push(
+                                emmiter_list[closest_node_data.1].get_loc()
+                                );
+                            emmiter_list.remove(closest_node_data.1);
+                        }
                     }
                     
+                },
+                InputMode::Wire => {
+                    // add wire on left click
+                    if mouse_new_buttons.contains(&MouseButton::Left) {
+                        let closest_node_data = node_closest_dist_get(
+                            &emmiter_list, mouse_state.x(), mouse_state.y()).unwrap();
+                        println!("{:?}", closest_node_data );
+
+                    }
                 },
                 _ => panic!("invalid input_mode"),
             }
@@ -188,7 +222,12 @@ pub fn main() {
 
         // background
         canvas.set_draw_color(theme.background);
-        canvas.clear();
+        // clear previous locations if any
+
+        for emmiter_location in emmiter_list_buffer {
+            draw_circle(&mut canvas, emmiter_location.0, emmiter_location.1, radius);
+        }
+
 
         // nodes
         canvas.set_draw_color(theme.node_1);
@@ -226,6 +265,7 @@ pub fn main() {
                     sdl2::rect::Rect::new(WIDTH as i32 - 32, 2, 30, 30)
                     ).unwrap();
             }
+        emmiter_list_buffer =  Vec::new();
         canvas.present();
 
         if frame_count % INPUT_DELAY == 0 {
