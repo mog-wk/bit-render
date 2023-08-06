@@ -1,9 +1,9 @@
 extern crate sdl2;
 
-use sdl2::rect::Point;
-use sdl2::video::Window;
+use sdl2::rect::{ Point, Rect };
+use sdl2::video::{ WindowContext };
 use sdl2::pixels::Color;
-use sdl2::render::WindowCanvas;
+use sdl2::render::{ WindowCanvas, TextureCreator };
 use std::collections::HashSet;
 
 pub const WIDTH: u32 = 800;
@@ -13,9 +13,8 @@ pub enum InputMode {
     Emmiter,
     Receiver,
     Wire,
-    Func(fn()),
+    Function,
 }
-
 
 pub enum ColorNames {
     Black = 0x141414,
@@ -46,7 +45,6 @@ impl Theme {
 }
 
 
-#[allow(dead_code)]
 pub trait Node {
     fn x(&self) -> i32; 
     fn y(&self) -> i32;
@@ -78,6 +76,10 @@ impl Emmiter {
         }
         Ok(Self { loc: Point::new(x as i32, y as i32), state, connections })
     }
+    pub fn add_wire(emmiter: &mut Emmiter, wire: Wire) {
+        //-> Result<(), String> {
+        emmiter.connections.insert(wire);
+    }
 }
 
 impl Node for Emmiter {
@@ -96,11 +98,6 @@ impl Node for Emmiter {
     fn switch_state(&mut self) {
         self.state = !self.state;
     }
-}
-
-pub fn add_wire(emmiter: &mut Emmiter, wire: Wire) {
-    //-> Result<(), String> {
-    emmiter.connections.insert(wire);
 }
 
 pub fn emmit_signal(emmiter: &Emmiter) {
@@ -128,4 +125,50 @@ impl Wire {
 #[allow(dead_code)]
 struct UI {
 
+}
+
+pub fn render_text(canvas: &mut WindowCanvas, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, text: &str) -> Result<(), String> {
+
+    // test
+    let hello_text: String = "Hello World".to_string();
+    let surface = font.render(&hello_text).blended(Color::RGBA(127, 127, 0, 128)).map_err(|e| e.to_string())?;
+
+    let texture = texture_creator.create_texture_from_surface(&surface).map_err(|e| e.to_string())?;
+
+    let target = Rect::new(10, 0, 400, 200);
+
+    canvas.copy(&texture, None, Some(target))?;
+
+    Ok(())
+}
+
+/// get closest node from point, returns a tuple with the node and the distance
+pub fn node_closest_dist_get<T>(node_list: &Vec<T>, x: i32, y: i32)
+    -> Option<(u32, usize)> where T: Node {
+    if !(node_list.len() > 0) {
+        return None
+    } 
+    let mut closest_dist = WIDTH;
+    let mut closest_index = 0;
+    let mut index = 0;
+    for node in node_list.iter() {
+        let cur_dist = dist(x, y, node.x(), node.y());
+
+        if cur_dist < closest_dist {
+            closest_dist = cur_dist;
+            closest_index = index;
+        }
+        index += 1;
+    }
+    Some( (closest_dist, closest_index as usize) )
+}
+
+/// distance between two points
+pub fn dist(x: i32, y: i32, x1: i32, y1: i32) -> u32 {
+    let d = ( ( (y1 - y).pow(2) + (x1 - x).pow(2) ) as f64).sqrt();
+    if d < 0_f64 {
+        return (d * -1.0) as u32
+    } else {
+        d as u32
+    }
 }
