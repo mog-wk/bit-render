@@ -5,9 +5,13 @@ use sdl2::video::{ WindowContext };
 use sdl2::pixels::Color;
 use sdl2::render::{ WindowCanvas, TextureCreator };
 use std::collections::HashSet;
+use std::path::Path;
 
 pub const WIDTH: u32 = 800;
 pub const HEIGHT: u32 = 600;
+
+pub mod ui;
+pub mod shapes;
 
 pub enum InputMode {
     Emmiter,
@@ -23,23 +27,25 @@ pub enum ColorNames {
     Red = 0xc80000,
 }
 
-pub struct Theme {
+pub struct Theme<'a> {
     pub background: Color,
-    pub node_1: Color,
-    pub node_0: Color,
+    pub emmiter: (Color, Color),
+    pub receiver: (Color, Color),
     pub wire: Color,
     pub text: Color,
+    pub font: &'a Path,
 }
 
 
-impl Theme {
+impl<'a> Theme<'a>  {
     pub fn black() -> Self {
         Self {
             background: Color::RGB(20, 20, 20),
-            node_1: Color::RGB(120, 80, 0),
-            node_0: Color::RGB(120, 0, 0),
+            emmiter: (Color::RGB(120, 80, 0), Color::RGB(120, 0, 0)),
+            receiver: (Color::RGB(0, 80, 120), Color::RGB(0, 0, 120)),
             wire: Color::RGB(120, 0, 0),
             text: Color::RGB(180, 180, 180),
+            font: Path::new(&"../fonts/OpenSans-Bold.ttf"),
         }
     }
 }
@@ -106,9 +112,44 @@ pub fn emmit_signal(emmiter: &Emmiter) {
     }
 }
 
-struct Receiver {
+pub struct Receiver {
     loc: Point,
-    state: bool,
+    pub state: bool,
+    connections: HashSet<Wire>,
+}
+
+impl Receiver {
+    pub fn new() -> Self {
+        Self { loc: Point::new( (WIDTH / 2) as i32, (HEIGHT / 2) as i32 ),
+        state: false,
+        connections: HashSet::new(), }
+    }
+    /// new node from data
+    pub fn from(x: u32, y: u32, state: bool, connections: HashSet<Wire>)
+        -> Result<Self, String> {
+        if x >= WIDTH || y >= HEIGHT {
+            return Err(format!("invalid input for node {} {}", x, y));
+        }
+        Ok(Self { loc: Point::new(x as i32, y as i32), state, connections })
+    }
+}
+
+impl Node for Receiver {
+    fn x(&self) -> i32 {
+        self.loc.x
+    }
+    fn y(&self) -> i32 {
+        self.loc.y
+    }
+    fn set_loc(&mut self, x: i32, y: i32) {
+        self.loc = Point::new(x,y);
+    }
+    fn get_loc(&self) -> (i32, i32) {
+        (self.loc.x, self.loc.y)
+    }
+    fn switch_state(&mut self) {
+        self.state = !self.state;
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -122,23 +163,21 @@ impl Wire {
 
 }
 
-#[allow(dead_code)]
-struct UI {
+/// TODO
+pub fn node_list_apply_mouse_input<T>(node_list: Vec<T>) where T: Node {
 
 }
 
-pub fn render_text(canvas: &mut WindowCanvas, texture_creator: &TextureCreator<WindowContext>, font: &sdl2::ttf::Font, text: &str) -> Result<(), String> {
-
+pub fn render_text(canvas: &mut WindowCanvas,
+                   texture_creator: &TextureCreator<WindowContext>,
+                   font: &sdl2::ttf::Font, text: &str,
+                   x: i32, y: i32, w: u32, h: u32) -> Result<(), String> {
     // test
-    let hello_text: String = "Hello World".to_string();
+    let hello_text: String = text.to_string();
     let surface = font.render(&hello_text).blended(Color::RGBA(127, 127, 0, 128)).map_err(|e| e.to_string())?;
-
     let texture = texture_creator.create_texture_from_surface(&surface).map_err(|e| e.to_string())?;
-
-    let target = Rect::new(10, 0, 400, 200);
-
+    let target = Rect::new(x,y,w,h);
     canvas.copy(&texture, None, Some(target))?;
-
     Ok(())
 }
 

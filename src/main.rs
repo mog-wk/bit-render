@@ -13,8 +13,7 @@ use std::path::Path;
 
 use bit_render::*;
 
-mod render;
-use render::shapes::draw_circle;
+use shapes::draw_circle;
 
 /// create color themes; eventually create in a seperate file
 
@@ -39,20 +38,22 @@ pub fn main() {
 
     // prepare fonts
     let ttf_context = sdl2::ttf::init().unwrap();
-    let font_path: &Path = Path::new(&"fonts/OpenSans-Bold.ttf");
-    let mut font = ttf_context.load_font(font_path, 64).unwrap();
+    let mut font = ttf_context.load_font(theme.font, 64).unwrap();
     font.set_style(sdl2::ttf::FontStyle::BOLD);
+
+    //UI
+    let mut user_interface = ui::UserInterface::new();
+    //let mut controller = ui::Controller::new(&mut user_interface);
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut mouse_buttons_buffer = HashSet::new();
 
     let mut emmiter_list: Vec<Emmiter> = Vec::new();
-    let mut emmiter_list_buffer: Vec<(i32, i32)> = Vec::new();
     let mut wire_list: Vec<Wire> = Vec::new();
+    let mut receiver_list: Vec<Receiver> = Vec::new();
+    let mut node_list_buffer: Vec<(i32, i32)> = Vec::new();
 
     let radius = 16;
-
-    let mut input_mode = InputMode::Emmiter;
 
     let mut inputted: bool = false;
     let mut move_mode: bool = true;
@@ -62,9 +63,10 @@ pub fn main() {
 
     canvas.set_draw_color(theme.background);
     canvas.clear();
-    render_text(&mut canvas, &texture_creator, &font, &"123").unwrap();
+    //render_text(&mut canvas, &texture_creator, &font, &"123").unwrap();
 
-
+    user_interface.text_box_add("meu pau de asa");
+    user_interface.text_box_add("caceta");
     'run: loop {
         // --------------------------------------------------------------------
         // Input Handler
@@ -74,14 +76,13 @@ pub fn main() {
                 Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'run,
                 // Mode Change 
                 Event::KeyDown { keycode: Some(Keycode::Q), .. } =>
-                    input_mode = InputMode::Emmiter,
+                    user_interface.set_input_mode(InputMode::Emmiter),
                 Event::KeyDown { keycode: Some(Keycode::W), .. } =>
-                    input_mode = InputMode::Wire,
+                    user_interface.set_input_mode(InputMode::Wire),
                 Event::KeyDown { keycode: Some(Keycode::E), .. } =>
-                    input_mode = InputMode::Receiver,
+                    user_interface.set_input_mode(InputMode::Receiver),
                 Event::KeyDown { keycode: Some(Keycode::R), .. } =>
-                    input_mode = InputMode::Function,
-
+                    user_interface.set_input_mode(InputMode::Function),
                 //_ => println!("{:?}", event),
                 _ => (),
             }
@@ -100,7 +101,7 @@ pub fn main() {
             println!("X = {:?}, Y ={:?}, {:?} : {:?}",
                      mouse_state.x(), mouse_state.y(),
                      mouse_old_buttons, mouse_new_buttons);
-            match input_mode {
+            match user_interface.get_input_mode() {
                 InputMode::Emmiter => 'input_action: {
                     if mouse_new_buttons.contains(&MouseButton::Left) {
                         // add emmiter
@@ -120,7 +121,7 @@ pub fn main() {
                             if closest_node_data.0 < radius as u32 {
                                 // if intersects change state of node
                                 let node = &mut emmiter_list[closest_node_data.1];
-                                node.state = !node.state;
+                                node.switch_state();
                             } else {
                                 // add emmiter
                                 emmiter_list.push(Emmiter::from(mouse_state.x() as u32,
@@ -147,7 +148,7 @@ pub fn main() {
                         if closest_node_data.0 <= radius as u32 {
                             // move
                             // add move_node to buffer
-                            emmiter_list_buffer.push(emmiter_list[closest_node_data.1].get_loc());
+                            node_list_buffer.push(emmiter_list[closest_node_data.1].get_loc());
                             emmiter_list[closest_node_data.1].set_loc(
                                 mouse_state.x(), mouse_state.y()
                                 ); 
@@ -166,7 +167,7 @@ pub fn main() {
                             None => break 'input_action,
                         };
                         if closest_node_data.0 < radius as u32 {
-                            emmiter_list_buffer.push(
+                            node_list_buffer.push(
                                 emmiter_list[closest_node_data.1].get_loc()
                                 );
                             emmiter_list.remove(closest_node_data.1);
@@ -174,18 +175,93 @@ pub fn main() {
                     }
                     
                 },
-                InputMode::Wire => {
+                InputMode::Wire => 'input_action: {
                     // add wire on left click
                     if mouse_new_buttons.contains(&MouseButton::Left) {
+                        if emmiter_list.len() == 0 || receiver_list.len() == 0 {
+                            break 'input_action;
+                        }
                         let closest_node_data = node_closest_dist_get(
                             &emmiter_list, mouse_state.x(), mouse_state.y()).unwrap();
                         println!("{:?}", closest_node_data );
 
                     }
                 },
-            InputMode::Function => {
-            }
-                _ => panic!("invalid input_mode"),
+                InputMode::Receiver => 'input_action: {
+                    if mouse_new_buttons.contains(&MouseButton::Left) {
+                        // add receiver
+                        if receiver_list.len() == 0 {
+                            // if there are no nodes just add on spot
+                            receiver_list.push( Receiver::from(
+                                    mouse_state.x() as u32,
+                                    mouse_state.y() as u32,
+                                    true, HashSet::new()).unwrap()
+                                ); 
+                        } else {
+                            // if there are nodes, check to avoid intercection
+                            // find closest node's distance and index
+                            let closest_node_data: (u32, usize) = node_closest_dist_get(
+                                &receiver_list, mouse_state.x(), mouse_state.y()
+                                ) .unwrap();
+                            if closest_node_data.0 < radius as u32 {
+                                // if intersects change state of node
+                                let node = &mut receiver_list[closest_node_data.1];
+                                node.switch_state();
+                            } else {
+                                // add receiver
+                                receiver_list.push(Receiver::from(mouse_state.x() as u32,
+                                mouse_state.y() as u32, true, HashSet::new()).unwrap() ); 
+                            }
+                        }
+                        inputted = true;
+
+                    } else if mouse_new_buttons.contains(&MouseButton::Middle) {
+                        // move node while middle mouse button is pressed
+                        // if there are no nodes do nothing
+                        // TODO make move smoothier
+                        // TODO make check for intersection with mouse pointer and
+                        // closest node but make move range not dependent on closest
+                        // node's radius
+                        if receiver_list.len() == 0 {
+                            break 'input_action;
+                        }
+                        // find node
+                        let closest_node_data: (u32, usize) = node_closest_dist_get(
+                            &receiver_list, mouse_state.x(), mouse_state.y()).unwrap();
+                        
+                        // mouse intersects node
+                        if closest_node_data.0 <= radius as u32 {
+                            // move
+                            // add move_node to buffer
+                            node_list_buffer.push(receiver_list[closest_node_data.1].get_loc());
+                            receiver_list[closest_node_data.1].set_loc(
+                                mouse_state.x(), mouse_state.y()
+                                ); 
+                            move_mode = true;
+                        }
+                    } else if mouse_old_buttons.contains(&MouseButton::Middle) {
+                            move_mode = false;
+                            inputted = true;
+
+                    } else if mouse_new_buttons.contains(&MouseButton::Right) {
+                        // removes node
+                        let closest_node_data = match node_closest_dist_get(
+                            &receiver_list, mouse_state.x(), mouse_state.y()
+                            ) {
+                            Some(v) => v,
+                            None => break 'input_action,
+                        };
+                        if closest_node_data.0 < radius as u32 {
+                            node_list_buffer.push(
+                                receiver_list[closest_node_data.1].get_loc()
+                                );
+                            receiver_list.remove(closest_node_data.1);
+                        }
+                    }
+                }
+                InputMode::Function => {
+                    //TODO
+                }
             }
 
             if !move_mode {
@@ -199,59 +275,42 @@ pub fn main() {
         // render
         // --------------------------------------------------------------------
 
-        // background
+        // clear previous node locations if any
         canvas.set_draw_color(theme.background);
-        // clear previous locations if any
-
-        for emmiter_location in emmiter_list_buffer {
-            draw_circle(&mut canvas, emmiter_location.0, emmiter_location.1, radius);
+        for node_location in node_list_buffer {
+            draw_circle(&mut canvas, node_location.0, node_location.1, radius);
         }
-
-
         // nodes
-        canvas.set_draw_color(theme.node_1);
         for emmiter in emmiter_list.iter() {
             let node_color = match emmiter.state {
-                true => theme.node_1,
-                false => theme.node_0,
+                true => theme.emmiter.1,
+                false => theme.emmiter.0,
             };
             canvas.set_draw_color(node_color);
             draw_circle(&mut canvas, emmiter.x(), emmiter.y(), 16);
         }
-            // render DEBUG
-            if DEBUG {
-                // display input node
-                //let alp = 0.3;
-                match input_mode {
-                    InputMode::Emmiter => {
-                        canvas.set_draw_color(Color::RGB(120, 0, 0));
-                    },
-                    InputMode::Wire => {
-                        canvas.set_draw_color(Color::RGB(0, 120, 0));
-                    },
-                    InputMode::Receiver => {
-                        canvas.set_draw_color(Color::RGB(120, 120, 0));
-                    },
-                    _ => (),
-                    /*
-                    InputMode::Func() => {
-                        canvas.set_draw_color(Color::RGBA(0, 0, 120, alp));
-                    },
-                    */
-                }
+        for receiver in receiver_list.iter() {
+            let node_color = match receiver.state {
+                true => theme.receiver.1,
+                false => theme.receiver.0,
+            };
+            canvas.set_draw_color(node_color);
+            draw_circle(&mut canvas, receiver.x(), receiver.y(), 16);
+        }
 
-                canvas.fill_rect(
-                    sdl2::rect::Rect::new(WIDTH as i32 - 32, 2, 30, 30)
-                    ).unwrap();
-            }
-        emmiter_list_buffer =  Vec::new();
+        user_interface.text_box_render(&mut canvas, &texture_creator, &theme, &font);
+
+        // render DEBUG
+        if DEBUG {
+            user_interface.debug(&mut canvas);
+        }
+
+        node_list_buffer = Vec::new();
         canvas.present();
 
         if frame_count % INPUT_DELAY == 0 {
             inputted = false;
-        } else {
         }
-
         frame_count += 1;
 
         sleep(Duration::new(0, 1_000_000_000_u32 / 60));
